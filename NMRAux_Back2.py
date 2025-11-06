@@ -13,15 +13,21 @@ from nmrglue.process.proc_base import ps
 from nmrglue.process.proc_autophase import manual_ps
 
 
-ppmRange = 2
+ppmRange = 2.25
+ppmSubRange = 2
+nOff = 8
+nDyn = 2
 
-nPts = 8192
+offIndex = 128
+baseNPts = 8192
+nPts = baseNPts + (offIndex * nOff)
 
 minCSRange = 0
 maxCSRange = minCSRange + ppmRange
 
 
 CSRange = np.linspace(maxCSRange, minCSRange, nPts)
+CSSubRange = np.linspace(ppmSubRange, minCSRange, baseNPts)
 #Range totale frequenza
 # 25 Hz per 128 Pt
 # 1600 Hz per 8192 Pt
@@ -57,9 +63,6 @@ def fromPeaksToPos(x):
     xx = np.array(x)
     return xx * ppmRange / -nPts + ppmRange
 
-def fromPpmToIndex(x):
-    return round(nPts - (x / ppmRange) * nPts)
-
 # ---
 
 def generateRandomSpectrum(seed = None) -> npt.ArrayLike:
@@ -72,6 +75,7 @@ def generateRandomSpectrum(seed = None) -> npt.ArrayLike:
     maxppm = maxCSRange
     
     peakAmt = rng.integers(8) + 1
+    #peakAmt = 1
     
     peaksPpm = rng.uniform(minppm, maxppm, peakAmt)
     multiplicity = rng.integers(5, size = peakAmt) + 1
@@ -83,7 +87,6 @@ def generateRandomSpectrum(seed = None) -> npt.ArrayLike:
     
     yy = np.zeros_like(CSRange)
     
-    peaks = []
     
     for i in range(peakAmt):
         #print(peaksPpm[i])
@@ -94,10 +97,6 @@ def generateRandomSpectrum(seed = None) -> npt.ArrayLike:
         maxInt = binom(multiplicity[i]-1, (multiplicity[i])//2)
     
         for j,pk in enumerate(pks):
-            
-            if fromPpmToIndex(pk) < 8192:
-                peaks.append(fromPpmToIndex(pk))            
-                        
             multiplier = binom(multiplicity[i]-1, j) / maxInt
             yy += intensity[i] * ls.sim_pvoigt_fwhm(CSRange, pk, width[i], ratios[i]) * multiplier
             
@@ -143,19 +142,50 @@ def generateRandomSpectrum(seed = None) -> npt.ArrayLike:
     
     yyFiltered = dynamicScaleFiltering(yy)  
     
-    '''
+    #Augmentation:    
     
-        
-    peaks, properties = find_peaks(yy, prominence=10, width=0.1)
-    wl =  fromPeaksToPos(properties["left_ips"])
-    wr =  fromPeaksToPos(properties["right_ips"])
+    yyPureReturn     = np.zeros((nOff + nDyn, baseNPts))
+    yyReturn         = np.zeros((nOff + nDyn, baseNPts))
+    yyFilteredReturn = np.zeros((nOff + nDyn, baseNPts))
+    yyRegReturn      = np.zeros((nOff + nDyn, baseNPts))
     
-    xPks = CSRange[peaks]
-    yPks = yyPP[peaks]
-    wPks = wr - wl
+    
+    for i in range(nOff):
+        off = offIndex * i
+        offEnd = baseNPts + off
         
-    retStats.append({"xPks": xPks, "yPks":yPks, "wPks": wPks, "peaks": peaks})
-    '''
+        yyPureReturn[i,:]     = yy[off : offEnd]  
+        yyReturn[i,:]         = yy[off : offEnd] + noise[off : offEnd]        
+        yyFilteredReturn[i,:] = yyFiltered[off : offEnd]     
+        yyRegReturn[i,:]      = yyReg[off : offEnd]
+        
+    #dynrange:
+    
+    for i in range(nDyn):
+        mult = rng.uniform(minDynRange, maxDynRange)
+        
+        yyPureReturn[i + nOff,:]     = yyPureReturn[0,:] * mult
+        yyReturn[i + nOff,:]         = yyReturn[0,:] * mult
+        yyFilteredReturn[i + nOff,:] = yyFilteredReturn[0,:] * mult   
+        yyRegReturn[i + nOff,:]      = yyRegReturn[0,:] #* mult
+    
+    # Peaks
+    
+    retStats = []
+    
+    for i in range(yyReturn.shape[0]):
+        
+        yyPP = yyPureReturn[i,:]
+        
+        peaks, properties = find_peaks(yyPP, prominence=10, width=0.1)
+        wl =  fromPeaksToPos(properties["left_ips"])
+        wr =  fromPeaksToPos(properties["right_ips"])
+    
+        xPks = CSSubRange[peaks]
+        yPks = yyPP[peaks]
+        wPks = wr - wl
+        
+        retStats.append({"xPks": xPks, "yPks":yPks, "wPks": wPks, "peaks": peaks})
 
     
-    return {"pure": yy, "true": yy + noise, "filtered": yyFiltered, "reg": yyReg}, peaks
+    return yyReturn, yyFilteredReturn, yyRegReturn, retStats
