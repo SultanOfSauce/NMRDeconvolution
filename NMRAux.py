@@ -12,6 +12,8 @@ import nmrglue.analysis.lineshapes1d as ls
 from nmrglue.process.proc_base import ps
 from nmrglue.process.proc_autophase import manual_ps
 
+import warnings
+
 
 ppmRange = 2
 
@@ -134,7 +136,8 @@ def generateRandomSpectrum(seed = None) -> npt.ArrayLike:
     #PHASE
         
     phase = rng.uniform(minPhase, maxPhase)
-    yy = ps(yy, p1 = phase)
+    with warnings.catch_warnings(action="ignore"):
+        yy = ps(yy, p1 = phase)
     
     #NOISE
     noise = rng.normal(scale = maxNoise, size = nPts)
