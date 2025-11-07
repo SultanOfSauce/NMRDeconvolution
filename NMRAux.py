@@ -17,7 +17,7 @@ import warnings
 
 ppmRange = 2
 
-nPts = 8192
+nPts = 2048
 
 minCSRange = 0
 maxCSRange = minCSRange + ppmRange
@@ -97,7 +97,7 @@ def generateRandomSpectrum(seed = None) -> npt.ArrayLike:
     
         for j,pk in enumerate(pks):
             
-            if fromPpmToIndex(pk) < 8192:
+            if fromPpmToIndex(pk) < nPts:
                 peaks.append(fromPpmToIndex(pk))            
                         
             multiplier = binom(multiplicity[i]-1, j) / maxInt
