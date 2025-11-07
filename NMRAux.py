@@ -17,7 +17,7 @@ import warnings
 
 ppmRange = 2
 
-nPts = 2048
+nPts = 512
 
 minCSRange = 0
 maxCSRange = minCSRange + ppmRange
@@ -64,8 +64,10 @@ def fromPpmToIndex(x):
 
 # ---
 
-def generateRandomSpectrum(seed = None) -> npt.ArrayLike:
+def generateRandomSpectrum(seed = None, peakMode = "narrow") -> npt.ArrayLike:
     rng = np.random.default_rng(seed)
+    
+    assert peakMode in ["narrow", "wide"]
     
     freq = MHZOperative
     hztoppm = lambda x: x / (freq)
@@ -97,7 +99,7 @@ def generateRandomSpectrum(seed = None) -> npt.ArrayLike:
     
         for j,pk in enumerate(pks):
             
-            if fromPpmToIndex(pk) < nPts:
+            if fromPpmToIndex(pk) < nPts and peakMode == "narrow":
                 peaks.append(fromPpmToIndex(pk))            
                         
             multiplier = binom(multiplicity[i]-1, j) / maxInt
@@ -112,7 +114,11 @@ def generateRandomSpectrum(seed = None) -> npt.ArrayLike:
     bigRatios = rng.uniform(0,1, bigPeakAmt)
     
     for i in range(bigPeakAmt):
-        yy += bigIntensity[i] * ls.sim_pvoigt_fwhm(CSRange, bigPeaksPpm[i], bigWidth[i], bigRatios[i])
+        bigPk = bigPeaksPpm[i]
+        if fromPpmToIndex(bigPk) < nPts and peakMode == "wide":
+            peaks.append(fromPpmToIndex(bigPk))   
+        
+        yy += bigIntensity[i] * ls.sim_pvoigt_fwhm(CSRange, bigPk, bigWidth[i], bigRatios[i])
     
     #DISTORTION
     
