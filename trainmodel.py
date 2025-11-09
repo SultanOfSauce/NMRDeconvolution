@@ -47,7 +47,6 @@ optimizer: th.optim.Optimizer = th.optim.Adam(
 )
 
 lossCriterion = nn.CrossEntropyLoss()
-from safetensors.torch import
 
 EPOCHS = 100
 BATCH_SIZE = 32

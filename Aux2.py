@@ -10,6 +10,8 @@ import torch as th
 import torch.nn as nn
 from torch import Tensor
 
+from torch.utils.data import Dataset
+
 class NMRDataset(Dataset):
     def __init__(self, maxLen = 250000, startSeed = 0, mode = "narrow"):
         self.maxLen = maxLen
