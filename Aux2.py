@@ -1,0 +1,72 @@
+import numpy as np
+import numpy.typing as npt
+
+import NMRAux as nmr
+import Layers as ly
+
+from torchinfo import summary
+
+import torch as th
+import torch.nn as nn
+from torch import Tensor
+
+class NMRDataset(Dataset):
+    def __init__(self, maxLen = 250000, startSeed = 0, mode = "narrow"):
+        self.maxLen = maxLen
+        self.startSeed = startSeed
+        self.mode = mode
+
+    def __len__(self):
+        return self.maxLen
+
+    def __getitem__(self, idx):
+        yy, res = nmr.generateRandomSpectrum(idx + self.startSeed, self.mode)
+        isPk = np.full_like(yy["true"], False)
+        for i in res:
+            isPk[i] = True
+
+        #isPk[res[]] = True
+        return th.from_numpy(np.float32(yy["true"]).reshape([1,-1])), isPk.reshape([1,-1])
+
+def NMRSeq() -> th.nn.Sequential:
+    return th.nn.Sequential(
+
+        ly.Inception_variant(1),
+
+        ly.TransposeLayer(-1,-2),
+
+
+        nn.Linear(
+            in_features=136, out_features=64, bias=True
+        ),
+
+        nn.ReLU(),
+
+        nn.Linear(
+            in_features=64, out_features=32, bias=True
+        ),
+
+        nn.ReLU(),
+
+        nn.LSTM(32, 16, bidirectional=True),
+        ly.extract_tensor(),
+
+        nn.ReLU(),
+
+        nn.Linear(
+            in_features=32, out_features=32, bias=True
+        ),
+        nn.ReLU(),
+
+        nn.Linear(
+            in_features=32, out_features=16, bias=True
+        ),
+        nn.ReLU(),
+
+        nn.Linear(
+            in_features=16, out_features=1, bias=True
+        ),
+        nn.ReLU(),
+
+        ly.TransposeLayer(-1,-2),
+    )
