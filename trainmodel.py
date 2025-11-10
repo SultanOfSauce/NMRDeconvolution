@@ -16,10 +16,10 @@ from tqdm import trange
 
 from safetensors.torch import save_model
 
-ML_train = 5000
-ML_test  = 100
+ML_train = 10000
+ML_test  = 500
 
-batch_size = 256
+batch_size = 512
 train_set = NMRDataset(maxLen = ML_train)
 test_set = NMRDataset(maxLen = ML_test, startSeed = ML_train)
 
@@ -98,6 +98,6 @@ for epoch in trange(EPOCHS, desc="Training epoch"):
         eval_acc.append(trackingcorrect / num_elem)
 
 print("Saving model...")
-save_model(model, "modelpars.safetensors")
+save_model(model, "modelpars2.safetensors")
 np.array(eval_losses).tofile('eval_losses.csv', sep = ',')
 np.array(eval_acc).tofile('eval_acc.csv', sep = ',')
