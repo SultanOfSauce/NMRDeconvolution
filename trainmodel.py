@@ -16,7 +16,7 @@ from tqdm import trange
 
 from safetensors.torch import save_model
 
-ML_train = 30000
+ML_train = 10000
 ML_test  = 1000
 
 batch_size = 64
@@ -49,7 +49,7 @@ optimizer: th.optim.Optimizer = th.optim.Adam(
 
 lossCriterion = nn.CrossEntropyLoss()
 
-EPOCHS = 100
+EPOCHS = 30
 
 # Loop over epochs
 for epoch in trange(EPOCHS, desc="Training epoch"):
