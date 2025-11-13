@@ -68,7 +68,6 @@ def NMRSeq() -> th.nn.Sequential:
         nn.Linear(
             in_features=16, out_features=1, bias=True
         ),
-        nn.ReLU(),
 
         ly.TransposeLayer(-1,-2),
     )

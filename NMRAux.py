@@ -17,7 +17,7 @@ import warnings
 
 ppmRange = 2
 
-nPts = 1024
+nPts = 8192
 
 minCSRange = 0
 maxCSRange = minCSRange + ppmRange
