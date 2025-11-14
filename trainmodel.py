@@ -20,8 +20,8 @@ ML_train = 10000
 ML_test  = 500
 
 batch_size = 64
-train_set = NMRDataset(maxLen = ML_train)
-test_set = NMRDataset(maxLen = ML_test, startSeed = ML_train)
+train_set = NMRDataset(maxLen = ML_train, spectra = "filtered")
+test_set = NMRDataset(maxLen = ML_test, startSeed = ML_train, spectra = "filtered")
 
 train_loader: DataLoader = DataLoader(
     dataset=train_set, batch_size=batch_size, shuffle=False,

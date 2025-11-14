@@ -150,7 +150,7 @@ def generateRandomSpectrum(seed = None, peakMode = "narrow") -> npt.ArrayLike:
     SNR = yy/(maxNoise/2)      
     yyReg = yy * peakShrinking(SNR)
     
-    yyFiltered = dynamicScaleFiltering(yy)  
+    yyFiltered = dynamicScaleFiltering(yy + noise)  
     
     '''
     
