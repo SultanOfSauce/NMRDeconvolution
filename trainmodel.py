@@ -16,8 +16,8 @@ from tqdm import trange, tqdm
 
 from safetensors.torch import save_model
 
-ML_train = 1000
-ML_test  = 1000
+ML_train = 10000
+ML_test  = 500
 
 batch_size = 64
 train_set = NMRDataset(maxLen = ML_train)
