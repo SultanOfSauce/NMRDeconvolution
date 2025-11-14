@@ -63,7 +63,7 @@ class TransposeLayer(nn.Module):
     def forward(self, input):
         if self.verbose:
             print("Before:", input.size())
-        inputReshape = th.transpose(input, self.dim1, self.dim2)
+        inputReshape = th.transpose(input, self.dim1, self.dim2).contiguous()
         if self.verbose:
             print("After:", inputReshape.size())
         return inputReshape

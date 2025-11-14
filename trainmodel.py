@@ -12,11 +12,11 @@ import torch.nn as nn
 from torch import Tensor
 from torch.utils.data import Dataset,DataLoader
 
-from tqdm import trange
+from tqdm import trange, tqdm
 
 from safetensors.torch import save_model
 
-ML_train = 10000
+ML_train = 1000
 ML_test  = 1000
 
 batch_size = 64
@@ -35,7 +35,7 @@ test_loader: DataLoader = DataLoader(
 
 
 device: th.device = th.device(
-    "cuda"
+    "cuda" if th.cuda.is_available() else "cpu"
 )
 print(device)
 
@@ -47,16 +47,27 @@ optimizer: th.optim.Optimizer = th.optim.Adam(
     params=model.parameters(), lr=0.001, weight_decay=0
 )
 
-lossCriterion = nn.CrossEntropyLoss()
+lossCriterion = (
+    th.nn.CrossEntropyLoss()
+)
+
+sumCriterion = (
+    th.nn.CrossEntropyLoss(reduction = "sum")
+)
 
 EPOCHS = 30
 
+eval_losses = np.array([])
+
 # Loop over epochs
-for epoch in trange(EPOCHS, desc="Training epoch"):
+for epoch in (bar := trange(EPOCHS, desc="Training   | Training epoch", 
+                            bar_format="{desc}:{percentage:3.0f}%|{bar:50}{r_bar}")):
 
     model.train()  # Remember to set the model in training mode before actual training
     # Loop over data
     for batch_idx, batched_datapoint in enumerate(train_loader):
+        
+        bar.set_description_str(f"Training   - Batch no {batch_idx:04}/{(ML_train//batch_size + 1):04} | Training epoch")
         x, y = batched_datapoint
         x, y = x.to(device), y.to(device)
 
@@ -72,8 +83,32 @@ for epoch in trange(EPOCHS, desc="Training epoch"):
 
         # Update model parameters
         optimizer.step()
-
-
+        
+        #Evaluating error:
+        model.eval()
+        
+        
+        num_elem: int = 0
+        trackingmetric: float = 0
+        #trackingcorrect: int = 0
+               
+        
+    with th.no_grad():
+        for o, batched_datapoint_e in enumerate(train_loader):
+            
+            bar.set_description_str(f"Evaluating - Batch no {o:04}/{(ML_train//batch_size + 1):04} | Training epoch")
+                
+            x_e, y_e = batched_datapoint_e
+            x_e, y_e = x_e.to(device), y_e.to(device)
+            modeltarget_e = model(x_e)
+                
+            trackingmetric += sumCriterion(modeltarget_e, y_e).item()
+                #trackingcorrect += ypred_e.eq(y_e.view_as(ypred_e)).sum().item()
+                
+            num_elem += x_e.shape[0]
+        eval_losses = np.append(eval_losses, trackingmetric / num_elem)
+            #eval_acc.append(trackingcorrect / num_elem)]
 
 print("Saving model...")
 save_model(model, "modelpars2.safetensors")
+np.savetxt("track.csv", trackingmetric, delimiter=",")
