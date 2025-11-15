@@ -1,16 +1,13 @@
 import numpy as np
-import numpy.typing as npt
 
-import NMRAux as nmr
+import nmrMod as nmr
 import Layers as ly
-
-from torchinfo import summary
 
 import torch as th
 import torch.nn as nn
 from torch import Tensor
-
 from torch.utils.data import Dataset
+
 
 class NMRDataset(Dataset):
     def __init__(self, maxLen = 250000, startSeed = 0, mode = "narrow", spectra = "true"):

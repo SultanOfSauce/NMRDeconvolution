@@ -1,20 +1,15 @@
 import numpy as np
-import numpy.typing as npt
 
-import NMRAux as nmr
-import Layers as ly
-from Aux2 import *
-
-from torchinfo import summary
+from nmrnet import *
 
 import torch as th
 import torch.nn as nn
-from torch import Tensor
-from torch.utils.data import Dataset,DataLoader
+from torch.utils.data import DataLoader
+from torchinfo import summary
+from safetensors.torch import save_model
 
 from tqdm import trange, tqdm
 
-from safetensors.torch import save_model
 
 ML_train = 10000
 ML_test  = 500
@@ -83,7 +78,9 @@ for epoch in (bar := trange(EPOCHS, desc="Training   | Training epoch",
 
         # Update model parameters
         optimizer.step()
+    save_model(model, f"modelpars_it_{epoch}.safetensors")
         
+    '''
         #Evaluating error:
         model.eval()
         
@@ -107,8 +104,7 @@ for epoch in (bar := trange(EPOCHS, desc="Training   | Training epoch",
                 
             num_elem += x_e.shape[0]
         eval_losses = np.append(eval_losses, trackingmetric / num_elem)
-            #eval_acc.append(trackingcorrect / num_elem)]
+    '''
 
 print("Saving model...")
 save_model(model, "modelpars2.safetensors")
-np.savetxt("track.csv", trackingmetric, delimiter=",")

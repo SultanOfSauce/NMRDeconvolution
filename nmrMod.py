@@ -17,19 +17,23 @@ import warnings
 
 ppmRange = 2
 
-nPts = 1024
+nPts = 2 ** 10
 
 minCSRange = 0
 maxCSRange = minCSRange + ppmRange
 
 
 CSRange = np.linspace(maxCSRange, minCSRange, nPts)
-#Range totale frequenza
+#Range totale frequenza in paper
 # 25 Hz per 128 Pt
 # 1600 Hz per 8192 Pt
 # 0.1953125 Hz per 1 Pt 
 # 1800 Hz per totale
-MHZOperative = 1800 / ppmRange #Da reverse engineering
+
+#Range per noi:
+#1600Hz - 2ppm - 1024pt
+
+MHZOperative = 1600 / ppmRange #Da reverse engineering
 
 minNarrow, maxNarrow = 0.5, 5
 minWide, maxWide = 5,400
@@ -60,7 +64,8 @@ def fromPeaksToPos(x):
     return xx * ppmRange / -nPts + ppmRange
 
 def fromPpmToIndex(x):
-    return round(nPts - (x / ppmRange) * nPts)
+    fraction = x /ppmRange
+    return round(nPts - fraction * nPts)
 
 # ---
 
@@ -76,6 +81,7 @@ def generateRandomSpectrum(seed = None, peakMode = "narrow") -> npt.ArrayLike:
     maxppm = maxCSRange
     
     peakAmt = rng.integers(8) + 1
+    #peakAmt = 1
     
     peaksPpm = rng.uniform(minppm, maxppm, peakAmt)
     multiplicity = rng.integers(5, size = peakAmt) + 1
