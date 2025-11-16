@@ -11,12 +11,13 @@ from safetensors.torch import save_model
 from tqdm import trange, tqdm
 
 
-ML_train = 10000
+ML_train = 20000
 ML_test  = 500
 
 batch_size = 64
-train_set = NMRDataset(maxLen = ML_train, spectra = "filtered")
-test_set = NMRDataset(maxLen = ML_test, startSeed = ML_train, spectra = "filtered")
+mode = "wide"
+train_set = NMRDataset(maxLen = ML_train, spectra = "filtered", mode = mode)
+test_set = NMRDataset(maxLen = ML_test, startSeed = ML_train, spectra = "filtered", mode = "wide")
 
 train_loader: DataLoader = DataLoader(
     dataset=train_set, batch_size=batch_size, shuffle=False,
@@ -43,11 +44,8 @@ optimizer: th.optim.Optimizer = th.optim.Adam(
 )
 
 lossCriterion = (
-    th.nn.CrossEntropyLoss()
-)
-
-sumCriterion = (
-    th.nn.CrossEntropyLoss(reduction = "sum")
+#    th.nn.CrossEntropyLoss()
+    th.nn.BCEWithLogitsLoss()
 )
 
 EPOCHS = 30
@@ -78,7 +76,7 @@ for epoch in (bar := trange(EPOCHS, desc="Training   | Training epoch",
 
         # Update model parameters
         optimizer.step()
-    save_model(model, f"modelpars_it_{epoch}.safetensors")
+    save_model(model, f"./{mode}/modelpars_{mode}_it_{epoch}.safetensors")
         
     '''
         #Evaluating error:
@@ -107,4 +105,4 @@ for epoch in (bar := trange(EPOCHS, desc="Training   | Training epoch",
     '''
 
 print("Saving model...")
-save_model(model, "modelpars2.safetensors")
+save_model(model, f"./{mode}/modelpars_{mode}_final.safetensors")
