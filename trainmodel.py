@@ -1,108 +1,112 @@
 import numpy as np
 
 from nmrnet import *
+from nmrdataset import *
 
 import torch as th
 import torch.nn as nn
 from torch.utils.data import DataLoader
-from torchinfo import summary
 from safetensors.torch import save_model
+from torchinfo import summary
 
-from tqdm import trange, tqdm
+from tqdm import trange
 
+mode = 'wide'
 
-ML_train = 20000
-ML_test  = 500
+ML = 10000
+ML_test = 500
+batch_size = 32
+workers = 2
 
-batch_size = 64
-mode = "wide"
-train_set = NMRDataset(maxLen = ML_train, spectra = "filtered", mode = mode)
-test_set = NMRDataset(maxLen = ML_test, startSeed = ML_train, spectra = "filtered", mode = "wide")
-
+train_set = NMRDataset(maxLen = ML     , mode = mode)
+test_set  = NMRDataset(maxLen = ML_test, mode = mode, startSeed = ML)
 train_loader: DataLoader = DataLoader(
     dataset=train_set, batch_size=batch_size, shuffle=False,
-    num_workers=4
+    num_workers=workers
 )
 test_loader: DataLoader = DataLoader(
     dataset=test_set,  batch_size=batch_size, shuffle=False,
-    num_workers=4
+    num_workers=workers
 )
 
 
+device = th.device("cuda" if th.cuda.is_available() else "cpu")
+model = NMRNet().to(device)
+summary(model, input_size=(batch_size, nmr.nPts))
 
-device: th.device = th.device(
-    "cuda" if th.cuda.is_available() else "cpu"
-)
-print(device)
+criterion = nn.BCEWithLogitsLoss()
 
-model: th.nn.Module = NMRSeq().to(device)
-print("Initializing model...")
-print(summary(model, input_size=(batch_size,1,nmr.nPts)))
+# 2. Define Optimizer
+optimizer = th.optim.Adam(model.parameters(), lr=0.001)
 
-optimizer: th.optim.Optimizer = th.optim.Adam(
-    params=model.parameters(), lr=0.001, weight_decay=0
-)
+# 3. Define Number of Epochs
+NUM_EPOCHS = 100
 
-lossCriterion = (
-#    th.nn.CrossEntropyLoss()
-    th.nn.BCEWithLogitsLoss()
-)
+# 4. Arrays to store loss history
+train_losses = []
+test_losses = []
 
-EPOCHS = 30
 
-eval_losses = np.array([])
-
-# Loop over epochs
-for epoch in (bar := trange(EPOCHS, desc="Training   | Training epoch", 
+for epoch in (bar := trange(NUM_EPOCHS, desc="Training   | Training epoch", 
                             bar_format="{desc}:{percentage:3.0f}%|{bar:50}{r_bar}")):
-
-    model.train()  # Remember to set the model in training mode before actual training
-    # Loop over data
-    for batch_idx, batched_datapoint in enumerate(train_loader):
+    # --- Training Phase ---
+    model.train()
+    running_train_loss = 0.0
+    
+    for i, nos in enumerate(train_loader):
+        inputs, targets = nos
+        bar.set_description_str(f"Training   - Batch no {i:04}/{(ML//batch_size + 1):04} | Training epoch")
+        inputs = inputs.to(device)
+        targets = targets.to(device)
         
-        bar.set_description_str(f"Training   - Batch no {batch_idx:04}/{(ML_train//batch_size + 1):04} | Training epoch")
-        x, y = batched_datapoint
-        x, y = x.to(device), y.to(device)
-
-        # Forward pass + loss computation
-        yhat = model(x)
-        loss = lossCriterion(yhat, y)
-
-        # Zero-out past gradients
+        # --- Forward Pass ---
+        # The model now returns raw logits
+        outputs = model(inputs)
+        
+        # --- Calculate Loss ---
+        # criterion compares the raw logits (outputs) with the targets
+        loss = criterion(outputs, targets)
+        
+        # --- Backward Pass and Optimization ---
         optimizer.zero_grad()
-
-        # Backward pass
         loss.backward()
-
-        # Update model parameters
         optimizer.step()
-    save_model(model, f"./{mode}/modelpars_{mode}_it_{epoch}.safetensors")
         
-    '''
-        #Evaluating error:
-        model.eval()
+        running_train_loss += loss.item() * inputs.size(0)
+        
+    save_model(model, f"./{mode}/modelpars_{mode}_i_{epoch}.safetensors")
         
         
-        num_elem: int = 0
-        trackingmetric: float = 0
-        #trackingcorrect: int = 0
-               
-        
+
+    # Calculate average training loss for the epoch
+    epoch_train_loss = running_train_loss / len(train_loader.dataset)
+    train_losses.append(epoch_train_loss)
+
+    # --- Evaluation (Test) Phase ---
+    model.eval()
+    running_test_loss = 0.0
+    
+    # Use torch.no_grad() to disable gradient calculations
     with th.no_grad():
-        for o, batched_datapoint_e in enumerate(train_loader):
+        for i, nos in enumerate(test_loader):
+            inputs, targets = nos
+            bar.set_description_str(f"Validating - Batch no {i:04}/{(ML_test//batch_size + 1):04} | Training epoch")
+            inputs = inputs.to(device)
+            targets = targets.to(device)
             
-            bar.set_description_str(f"Evaluating - Batch no {o:04}/{(ML_train//batch_size + 1):04} | Training epoch")
-                
-            x_e, y_e = batched_datapoint_e
-            x_e, y_e = x_e.to(device), y_e.to(device)
-            modeltarget_e = model(x_e)
-                
-            trackingmetric += sumCriterion(modeltarget_e, y_e).item()
-                #trackingcorrect += ypred_e.eq(y_e.view_as(ypred_e)).sum().item()
-                
-            num_elem += x_e.shape[0]
-        eval_losses = np.append(eval_losses, trackingmetric / num_elem)
-    '''
+            # Forward pass
+            outputs = model(inputs)
+            
+            # Calculate loss
+            loss = criterion(outputs, targets)
+            
+            running_test_loss += loss.item() * inputs.size(0)
+
+    # Calculate average test loss for the epoch
+    epoch_test_loss = running_test_loss / len(test_loader.dataset)
+    test_losses.append(epoch_test_loss)
 
 print("Saving model...")
 save_model(model, f"./{mode}/modelpars_{mode}_final.safetensors")
+np.savetxt(f'./{mode}/trainlosses.csv', np.array(train_losses), delimiter = ',')
+np.savetxt(f'./{mode}/testlosses.csv' , np.array(test_losses) , delimiter = ',')
