@@ -14,7 +14,7 @@ from tqdm import trange
 mode = 'wide'
 
 ML = 10000
-ML_test = 500
+ML_test = 1000
 batch_size = 32
 workers = 2
 
