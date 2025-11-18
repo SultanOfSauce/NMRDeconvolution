@@ -87,14 +87,12 @@ class NMRNet(nn.Module):
 
         
         # Permute for LSTM: (B, C, L) -> (B, L, C)
-        # x is now (B, L, 32)
         x = x.permute(0, 2, 1) 
         
         # Output: (B, L, 2 * 32) = (B, L, 64)
         x, _ = self.bilstm(x)
         
         # Permute back for TDD: (B, L, C) -> (B, C, L)
-        # x is now (B, 64, L)
         x = x.permute(0, 2, 1) 
 
         # TDD 3: (B, 64, L) -> (B, 32, L)
